@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CIDOS SmartTrack — JPH Edition</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════════ */
+:root {
+  --navy:    #0B2942;
+  --blue:    #146A91;
+  --teal:    #16B8BA;
+  --cyan:    #70DCE8;
+  --offwhite:#F5FAFC;
+  --white:   #FFFFFF;
+  --green:   #1DB07A;
+  --orange:  #E88A2E;
+  --red:     #D94F4F;
+  --grey:    #9EAAB4;
+  --text:    #1C2B38;
+  --muted:   #57717F;
+  --border:  #D6E8EE;
+  --shadow:  0 2px 12px rgba(11,41,66,0.10);
+  --sidebar: 230px;
+}
+/* ═══════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════ */
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,"Segoe UI",system-ui,sans-serif;background:var(--offwhite);color:var(--text);font-size:14px;line-height:1.6;}
+button{cursor:pointer;font-family:inherit;}
+input,select,textarea{font-family:inherit;}
+/* ═══════════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════════ */
+.app{display:flex;min-height:100vh;}
+/* SIDEBAR */
+.sidebar{width:var(--sidebar);background:var(--navy);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;transition:transform .3s;}
+.sidebar-logo{padding:20px 16px 14px;border-bottom:1px solid rgba(255,255,255,0.1);}
+.sidebar-logo-title{color:#fff;font-size:15px;font-weight:800;line-height:1.2;}
+.sidebar-logo-sub{color:var(--cyan);font-size:10px;font-weight:600;letter-spacing:.5px;margin-top:2px;}
+.sidebar-logo-dept{color:rgba(255,255,255,.5);font-size:10px;margin-top:4px;}
+.sidebar-nav{flex:1;padding:12px 10px;display:flex;flex-direction:column;gap:3px;overflow-y:auto;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;color:rgba(255,255,255,.6);font-size:13px;cursor:pointer;transition:all .2s;border:none;background:transparent;width:100%;text-align:left;}
+.nav-item:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.9);}
+.nav-item.active{background:var(--teal);color:#fff;font-weight:700;}
+.nav-icon{width:18px;text-align:center;flex-shrink:0;}
+.sidebar-footer{padding:12px 16px;border-top:1px solid rgba(255,255,255,.1);font-size:10px;color:rgba(255,255,255,.35);}
+/* MAIN */
+.main{margin-left:var(--sidebar);flex:1;display:flex;flex-direction:column;min-height:100vh;}
+/* TOPBAR */
+.topbar{background:var(--white);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+.topbar-left{display:flex;align-items:center;gap:12px;}
+.topbar-title{font-size:16px;font-weight:700;color:var(--navy);}
+.topbar-right{display:flex;align-items:center;gap:8px;}
+.topbar-chip{background:var(--offwhite);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;color:var(--muted);}
+.topbar-chip.alert{background:#FCEAEA;color:var(--red);border-color:#F5C0C0;font-weight:700;}
+.hamburger{display:none;background:none;border:none;color:var(--navy);font-size:20px;padding:4px;}
+/* CONTENT */
+.content{padding:24px;flex:1;}
+.page{display:none;}
+.page.active{display:block;}
+/* ═══════════════════════════════════════════════
+   SECTION HEADER
+═══════════════════════════════════════════════ */
+.section-title{font-size:18px;font-weight:800;color:var(--navy);margin-bottom:4px;}
+.section-sub{font-size:12px;color:var(--muted);margin-bottom:20px;}
+/* ═══════════════════════════════════════════════
+   KPI CARDS
+═══════════════════════════════════════════════ */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+.kpi-card{background:var(--white);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow);border-left:4px solid var(--teal);display:flex;flex-direction:column;gap:4px;}
+.kpi-num{font-size:30px;font-weight:800;color:var(--navy);line-height:1;}
+.kpi-label{font-size:12px;color:var(--muted);font-weight:600;}
+.kpi-sub{font-size:11px;color:var(--grey);}
+.kpi-card.green{border-color:var(--green);}
+.kpi-card.green .kpi-num{color:var(--green);}
+.kpi-card.orange{border-color:var(--orange);}
+.kpi-card.orange .kpi-num{color:var(--orange);}
+.kpi-card.red{border-color:var(--red);}
+.kpi-card.red .kpi-num{color:var(--red);}
+.kpi-card.blue{border-color:var(--blue);}
+/* ═══════════════════════════════════════════════
+   CARDS / PANELS
+═══════════════════════════════════════════════ */
+.card{background:var(--white);border-radius:14px;padding:20px;box-shadow:var(--shadow);margin-bottom:16px;}
+.card-title{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+/* ═══════════════════════════════════════════════
+   PROGRESS BAR
+═══════════════════════════════════════════════ */
+.prog-wrap{margin-bottom:20px;}
+.prog-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.prog-title{font-size:13px;font-weight:700;color:var(--navy);}
+.prog-pct{font-size:16px;font-weight:800;color:var(--teal);}
+.prog-track{background:#E8F4F8;border-radius:10px;height:14px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:10px;background:linear-gradient(90deg,var(--blue),var(--teal));transition:width .6s ease;}
+.prog-counts{font-size:11px;color:var(--muted);margin-top:4px;}
+/* ═══════════════════════════════════════════════
+   CHARTS ROW
+═══════════════════════════════════════════════ */
+.chart-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;margin-bottom:16px;}
+.chart-box{background:var(--white);border-radius:14px;padding:20px;box-shadow:var(--shadow);}
+.chart-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:14px;}
+/* ═══════════════════════════════════════════════
+   ACTION PANEL
+═══════════════════════════════════════════════ */
+.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
+.alert-item{display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:8px;margin-bottom:6px;font-size:12px;}
+.alert-item.critical{background:#FCEAEA;color:#B03030;}
+.alert-item.warning{background:#FEF3E7;color:#9A5A10;}
+.alert-item.ok{background:#E6F9F2;color:#1A7050;}
+/* ═══════════════════════════════════════════════
+   BADGES
+═══════════════════════════════════════════════ */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;}
+.badge-green{background:#E6F9F2;color:#1DB07A;}
+.badge-orange{background:#FEF3E7;color:#E88A2E;}
+.badge-red{background:#FCEAEA;color:#D94F4F;}
+.badge-grey{background:#EEF2F5;color:#7A8F9C;}
+.badge-blue{background:#E0F2FF;color:#146A91;}
+.badge-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
+/* ═══════════════════════════════════════════════
+   FILTER BAR
+═══════════════════════════════════════════════ */
+.filter-bar{background:var(--white);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow);margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.filter-bar select,.filter-bar input{border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);background:var(--offwhite);outline:none;}
+.filter-bar select:focus,.filter-bar input:focus{border-color:var(--teal);}
+.filter-bar label{font-size:11px;color:var(--muted);font-weight:600;}
+.btn-clear{padding:7px 14px;background:#FCEAEA;color:var(--red);border:none;border-radius:7px;font-size:12px;font-weight:700;}
+.filter-count{font-size:12px;color:var(--muted);margin-left:auto;}
+/* ═══════════════════════════════════════════════
+   TABLE
+═══════════════════════════════════════════════ */
+.table-wrap{overflow-x:auto;border-radius:12px;box-shadow:var(--shadow);}
+table{width:100%;border-collapse:collapse;background:var(--white);}
+thead tr{background:var(--navy);}
+thead th{padding:11px 14px;text-align:left;color:#fff;font-size:12px;font-weight:700;white-space:nowrap;}
+thead th:first-child{border-radius:12px 0 0 0;}
+thead th:last-child{border-radius:0 12px 0 0;}
+tbody tr{border-bottom:1px solid var(--border);transition:background .15s;}
+tbody tr:hover{background:#F0F8FC;}
+tbody td{padding:10px 14px;font-size:12px;color:var(--text);vertical-align:middle;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:last-child td:first-child{border-radius:0 0 0 12px;}
+tbody tr:last-child td:last-child{border-radius:0 0 12px 0;}
+.mini-prog{width:80px;height:7px;background:#E8F4F8;border-radius:4px;overflow:hidden;display:inline-block;}
+.mini-prog-fill{height:100%;border-radius:4px;}
+/* ═══════════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════════ */
+.btn{padding:7px 14px;border-radius:7px;border:none;font-size:12px;font-weight:700;cursor:pointer;transition:opacity .2s;}
+.btn:hover{opacity:.85;}
+.btn-teal{background:var(--teal);color:#fff;}
+.btn-navy{background:var(--navy);color:#fff;}
+.btn-outline{background:transparent;border:1.5px solid var(--teal);color:var(--teal);}
+.btn-red{background:var(--red);color:#fff;}
+.btn-green{background:var(--green);color:#fff;}
+.btn-grey{background:#EEF2F5;color:var(--muted);}
+.btn-sm{padding:5px 10px;font-size:11px;}
+.btn-icon{background:none;border:none;font-size:15px;cursor:pointer;padding:4px;border-radius:5px;}
+.btn-icon:hover{background:var(--offwhite);}
+/* ═══════════════════════════════════════════════
+   MODAL
+═══════════════════════════════════════════════ */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(11,41,66,.55);z-index:200;align-items:center;justify-content:center;padding:16px;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--white);border-radius:16px;width:100%;max-width:680px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.18);}
+.modal-header{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-title{font-size:15px;font-weight:800;color:var(--navy);}
+.modal-close{background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1;}
+.modal-body{padding:20px 22px;overflow-y:auto;flex:1;}
+.modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+/* TABS in modal */
+.modal-tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border);}
+.modal-tab{padding:8px 14px;font-size:12px;font-weight:700;color:var(--muted);background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;}
+.modal-tab.active{color:var(--teal);border-bottom-color:var(--teal);}
+.modal-tab-pane{display:none;}
+.modal-tab-pane.active{display:block;}
+/* FORM */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-group{display:flex;flex-direction:column;gap:4px;}
+.form-group.full{grid-column:1/-1;}
+.form-label{font-size:11px;font-weight:700;color:var(--navy);}
+.form-sub{font-size:10px;color:var(--muted);margin-top:-2px;}
+.form-input{border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:13px;color:var(--text);background:var(--offwhite);outline:none;width:100%;}
+.form-input:focus{border-color:var(--teal);}
+.form-select{border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;font-size:13px;color:var(--text);background:var(--offwhite);outline:none;width:100%;}
+.score-box{background:var(--offwhite);border:1px solid var(--border);border-radius:10px;padding:12px 16px;text-align:center;margin-top:12px;}
+.score-big{font-size:28px;font-weight:800;color:var(--navy);}
+.score-lbl{font-size:11px;color:var(--muted);}
+/* ═══════════════════════════════════════════════
+   GAP MODULE
+═══════════════════════════════════════════════ */
+.gap-card{background:var(--white);border-radius:12px;padding:16px;box-shadow:var(--shadow);margin-bottom:12px;border-left:4px solid var(--grey);}
+.gap-card.critical{border-color:var(--red);}
+.gap-card.warning{border-color:var(--orange);}
+.gap-card.ok{border-color:var(--green);}
+.gap-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;}
+.gap-course{font-size:13px;font-weight:700;color:var(--navy);}
+.gap-meta{font-size:11px;color:var(--muted);}
+.gap-items{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.gap-tag{padding:3px 9px;border-radius:6px;font-size:11px;font-weight:600;}
+.gap-tag.miss{background:#FCEAEA;color:#B03030;}
+.gap-tag.warn{background:#FEF3E7;color:#9A5A10;}
+/* REMINDER */
+.reminder-area{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:12px;font-size:13px;line-height:1.7;min-height:140px;resize:vertical;background:var(--offwhite);color:var(--text);}
+.copy-notice{display:none;font-size:11px;color:var(--green);margin-top:4px;font-weight:700;}
+/* ═══════════════════════════════════════════════
+   SIMULATOR
+═══════════════════════════════════════════════ */
+.sim-warning{background:#FFF8E7;border:1px solid #F5D88A;border-radius:8px;padding:10px 14px;font-size:12px;color:#7A5C00;font-weight:600;margin-bottom:16px;}
+.sim-form{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.sim-result{background:linear-gradient(135deg,#E6F7FC,#F0FFFD);border:1px solid var(--cyan);border-radius:12px;padding:20px;margin-top:16px;}
+.sim-pct-big{font-size:42px;font-weight:800;color:var(--navy);line-height:1;}
+.sim-change{font-size:16px;font-weight:700;color:var(--teal);margin-left:8px;}
+.sim-bar-track{background:#D6EFF5;border-radius:10px;height:12px;overflow:hidden;margin:10px 0;}
+.sim-bar-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--teal));border-radius:10px;transition:width .6s;}
+/* ═══════════════════════════════════════════════
+   REPORT
+═══════════════════════════════════════════════ */
+.report-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+.report-card{background:var(--white);border-radius:12px;padding:16px;text-align:center;box-shadow:var(--shadow);}
+.report-num{font-size:26px;font-weight:800;color:var(--navy);}
+.report-lbl{font-size:11px;color:var(--muted);margin-top:2px;}
+.report-prog-bar{height:8px;border-radius:8px;background:#E8F4F8;overflow:hidden;margin-top:8px;}
+.report-prog-fill{height:100%;border-radius:8px;}
+@media print{
+  .sidebar,.topbar,.no-print{display:none!important;}
+  .main{margin-left:0!important;}
+  .page{display:block!important;}
+  .page:not(.active){display:none!important;}
+  body{background:#fff;}
+  .card,.chart-box{box-shadow:none;border:1px solid #ddd;}
+}
+/* ═══════════════════════════════════════════════
+   MOBILE
+═══════════════════════════════════════════════ */
+@media(max-width:900px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+  .chart-grid{grid-template-columns:1fr;}
+  .action-grid{grid-template-columns:1fr;}
+  .report-summary{grid-template-columns:repeat(2,1fr);}
+  .sim-form{grid-template-columns:1fr;}
+  .form-grid{grid-template-columns:1fr;}
+}
+@media(max-width:700px){
+  .sidebar{transform:translateX(-100%);}
+  .sidebar.open{transform:translateX(0);}
+  .main{margin-left:0;}
+  .hamburger{display:block;}
+  .kpi-grid{grid-template-columns:1fr 1fr;}
+  .content{padding:16px;}
+}
+/* overlay for mobile sidebar */
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:90;}
+.sidebar-overlay.open{display:block;}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     SIDEBAR
+═══════════════════════════════════════════ -->
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-title">CIDOS SmartTrack</div>
+    <div class="sidebar-logo-sub">JPH EDITION</div>
+    <div class="sidebar-logo-dept">Jabatan Pelancongan &amp; Hospitaliti<br>Politeknik Ibrahim Sultan</div>
+  </div>
+  <nav class="sidebar-nav">
+    <button class="nav-item active" onclick="navigate('overview',this)"><span class="nav-icon">⊞</span> Overview</button>
+    <button class="nav-item" onclick="navigate('monitor',this)"><span class="nav-icon">☰</span> Pemantauan Program</button>
+    <button class="nav-item" onclick="navigate('cidos',this)"><span class="nav-icon">✓</span> Kriteria CIDOS</button>
+    <button class="nav-item" onclick="navigate('gap',this)"><span class="nav-icon">⚡</span> Gap &amp; Peringatan</button>
+    <button class="nav-item" onclick="navigate('sim',this)"><span class="nav-icon">◈</span> Simulasi Ramalan</button>
+    <button class="nav-item" onclick="navigate('report',this)"><span class="nav-icon">⎙</span> Laporan</button>
+  </nav>
+  <div class="sidebar-footer">Prototype v1.0 · IBM Bob Training<br>Data: Sesi 1, 2026/2027</div>
+</div>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- ═══════════════════════════════════════════
+     MAIN
+═══════════════════════════════════════════ -->
+<div class="main">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" onclick="toggleSidebar()">☰</button>
+      <span class="topbar-title" id="topbarTitle">Overview Dashboard</span>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-chip">📅 Sem 1, 2026/2027</span>
+      <span class="topbar-chip">JPH</span>
+      <span class="topbar-chip alert" id="topbarAlert">🔴 14 Gap</span>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- ═══════════════════════════════════════
+         PAGE 1: OVERVIEW
+    ═══════════════════════════════════════ -->
+    <div class="page active" id="page-overview">
+      <div class="section-title">Overview Dashboard</div>
+      <div class="section-sub">Status Blended Learning JPH · Tarikh Data: 10 Ogos 2026</div>
+
+      <!-- KPI -->
+      <div class="kpi-grid">
+        <div class="kpi-card blue">
+          <div class="kpi-num" id="kpi-total">36</div>
+          <div class="kpi-label">Jumlah Kursus</div>
+          <div class="kpi-sub">6 Program JPH</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-num" id="kpi-complete">22</div>
+          <div class="kpi-label">Memenuhi BL</div>
+          <div class="kpi-sub" id="kpi-complete-pct">61.1%</div>
+        </div>
+        <div class="kpi-card orange">
+          <div class="kpi-num" id="kpi-partial">5</div>
+          <div class="kpi-label">Dalam Proses</div>
+          <div class="kpi-sub" id="kpi-partial-pct">13.9%</div>
+        </div>
+        <div class="kpi-card red">
+          <div class="kpi-num" id="kpi-risk">9</div>
+          <div class="kpi-label">Belum Memenuhi</div>
+          <div class="kpi-sub" id="kpi-risk-pct">25.0%</div>
+        </div>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="card">
+        <div class="prog-wrap" style="margin-bottom:0;">
+          <div class="prog-label">
+            <span class="prog-title">Kemajuan Blended Learning Keseluruhan JPH</span>
+            <span class="prog-pct" id="ov-pct">61.1%</span>
+          </div>
+          <div class="prog-track"><div class="prog-fill" id="ov-bar" style="width:61.1%;"></div></div>
+          <div class="prog-counts" id="ov-counts">22 daripada 36 kursus telah mencapai Blended Status · Sesi 1, 2026/2027</div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="chart-grid">
+        <div class="chart-box">
+          <div class="chart-title">📊 Prestasi Mengikut Program</div>
+          <canvas id="chartProgram" height="220"></canvas>
+        </div>
+        <div class="chart-box">
+          <div class="chart-title">📈 Taburan Status Kursus</div>
+          <canvas id="chartStatus" height="220"></canvas>
+        </div>
+      </div>
+
+      <!-- Action Panel -->
+      <div class="action-grid">
+        <div class="card">
+          <div class="card-title">⚡ Tindakan Diperlukan</div>
+          <div class="alert-item critical">🔴 <div><strong>BHT</strong> — 0/5 kursus memenuhi BL (0%)</div></div>
+          <div class="alert-item critical">🔴 <strong>DCY</strong> — hanya 1/6 kursus memenuhi BL (16.7%)</div>
+          <div class="alert-item warning">🟠 <strong>DHM</strong> — 3 kursus masih belum memenuhi BL</div>
+          <div class="alert-item warning">🟠 <strong>KOK</strong> — 1 kursus (Asas Barista) belum memenuhi</div>
+          <div class="alert-item ok">🟢 <strong>DUP &amp; DEV</strong> — semua kursus telah mencapai Blended Status</div>
+        </div>
+        <div class="card">
+          <div class="card-title">📋 Ringkasan Per Program</div>
+          <table style="width:100%;font-size:12px;">
+            <thead><tr style="background:var(--navy);"><th style="padding:7px 10px;color:#fff;font-size:11px;border-radius:6px 0 0 0;">Program</th><th style="padding:7px 10px;color:#fff;font-size:11px;">Lulus</th><th style="padding:7px 10px;color:#fff;font-size:11px;">Jumlah</th><th style="padding:7px 10px;color:#fff;font-size:11px;border-radius:0 6px 0 0;">%</th></tr></thead>
+            <tbody id="overviewProgramTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div><!-- end page-overview -->
+
+    <!-- ═══════════════════════════════════════
+         PAGE 2: PROGRAMME MONITOR
+    ═══════════════════════════════════════ -->
+    <div class="page" id="page-monitor">
+      <div class="section-title">Pemantauan Program</div>
+      <div class="section-sub">Senarai lengkap kursus JPH dengan status Blended Learning</div>
+
+      <div class="filter-bar">
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label class="filter-bar label">Program</label>
+          <select id="f-prog" onchange="applyFilters()">
+            <option value="">Semua Program</option>
+            <option value="DUP">DUP</option>
+            <option value="DEV">DEV</option>
+            <option value="DHM">DHM</option>
+            <option value="DCY">DCY</option>
+            <option value="KOK">KOK</option>
+            <option value="BHT">BHT</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label class="filter-bar label">Semester</label>
+          <select id="f-sem" onchange="applyFilters()">
+            <option value="">Semua Semester</option>
+            <option value="Sem 1 2026/2027">Sem 1 2026/2027</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label class="filter-bar label">Pensyarah</label>
+          <select id="f-lec" onchange="applyFilters()">
+            <option value="">Semua Pensyarah</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label class="filter-bar label">Status</label>
+          <select id="f-status" onchange="applyFilters()">
+            <option value="">Semua Status</option>
+            <option value="Memenuhi">Memenuhi</option>
+            <option value="Dalam Proses">Dalam Proses</option>
+            <option value="Belum Memenuhi">Belum Memenuhi</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label class="filter-bar label">Carian</label>
+          <input type="text" id="f-search" placeholder="Nama/Kod kursus..." oninput="applyFilters()">
+        </div>
+        <button class="btn-clear" onclick="clearFilters()">↺ Padam</button>
+        <span class="filter-count" id="filterCount"></span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Kod</th>
+              <th>Nama Kursus</th>
+              <th>Program</th>
+              <th>Pensyarah</th>
+              <th>Semester</th>
+              <th>Kemajuan BL</th>
+              <th>Status</th>
+              <th class="no-print">Tindakan</th>
+            </tr>
+          </thead>
+          <tbody id="monitorTableBody"></tbody>
+        </table>
+      </div>
+    </div><!-- end page-monitor -->
+
+    <!-- ═══════════════════════════════════════
+         PAGE 3: CIDOS CRITERIA
+    ═══════════════════════════════════════ -->
+    <div class="page" id="page-cidos">
+      <div class="section-title">Pemantauan Kriteria CIDOS</div>
+      <div class="section-sub">12 komponen semakan Blended Learning per kursus · Klik "Edit" untuk kemaskini data</div>
+
+      <div class="card" style="background:#FFF8E7;border:1px solid #F5D88A;padding:12px 16px;">
+        <span style="font-size:12px;color:#7A5C00;font-weight:600;">⚠️ Ambang adalah nilai rujukan sementara dan boleh dikonfigurasi. Nilai ini tidak menggantikan keperluan CIDOS yang telah disahkan secara rasmi.</span>
+        <span style="font-size:11px;color:#9A7A30;margin-left:8px;">Ambang semasa: Pengenalan Kursus ≥1 · e-Content ≥7 · Forum ≥5 · Pentaksiran ≥2 · Interaksi Pelajar ≥70%</span>
+      </div>
+
+      <!-- KPI for CIDOS page -->
+      <div class="kpi-grid" style="margin-top:14px;">
+        <div class="kpi-card blue"><div class="kpi-num" id="cidosTotal">36</div><div class="kpi-label">Jumlah Kursus</div></div>
+        <div class="kpi-card green"><div class="kpi-num" id="cidosPass">0</div><div class="kpi-label">Lulus ≥80%</div></div>
+        <div class="kpi-card orange"><div class="kpi-num" id="cidosMid">0</div><div class="kpi-label">50–79%</div></div>
+        <div class="kpi-card red"><div class="kpi-num" id="cidosFail">0</div><div class="kpi-label">Di Bawah 50%</div></div>
+      </div>
+
+      <div class="filter-bar">
+        <select id="fc-prog" onchange="applyCidosFilters()">
+          <option value="">Semua Program</option>
+          <option value="DUP">DUP</option><option value="DEV">DEV</option>
+          <option value="DHM">DHM</option><option value="DCY">DCY</option>
+          <option value="KOK">KOK</option><option value="BHT">BHT</option>
+        </select>
+        <select id="fc-status" onchange="applyCidosFilters()">
+          <option value="">Semua Status</option>
+          <option value="Memenuhi">Memenuhi</option>
+          <option value="Dalam Proses">Dalam Proses</option>
+          <option value="Belum Memenuhi">Belum Memenuhi</option>
+        </select>
+        <button class="btn-clear" onclick="clearCidosFilters()">↺ Padam</button>
+        <span class="filter-count" id="cidosFilterCount"></span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Kod</th>
+              <th>Nama Kursus</th>
+              <th>Program</th>
+              <th>Pensyarah</th>
+              <th style="white-space:nowrap;">Setup ✓</th>
+              <th style="white-space:nowrap;">Enrol ✓</th>
+              <th style="white-space:nowrap;">Kumpulan ✓</th>
+              <th style="white-space:nowrap;">e-Content</th>
+              <th style="white-space:nowrap;">Forum</th>
+              <th style="white-space:nowrap;">Pentaksiran</th>
+              <th style="white-space:nowrap;">Interaksi</th>
+              <th style="white-space:nowrap;">BLDT ✓</th>
+              <th style="white-space:nowrap;">Skor BL</th>
+              <th style="white-space:nowrap;">Status BL</th>
+              <th class="no-print">Edit</th>
+            </tr>
+          </thead>
+          <tbody id="cidosTableBody"></tbody>
+        </table>
+      </div>
+    </div><!-- end page-cidos -->
+
+    <!-- ═══════════════════════════════════════
+         PAGE 4: GAP & REMINDER
+    ═══════════════════════════════════════ -->
+    <div class="page" id="page-gap">
+      <div class="section-title">Gap Detection &amp; Peringatan Pensyarah</div>
+      <div class="section-sub">Pengesanan automatik kriteria tidak lengkap · Jana mesej peringatan dalam Bahasa Melayu</div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card red"><div class="kpi-num" id="gapCritical">0</div><div class="kpi-label">Kritikal</div><div class="kpi-sub">BL Score &lt;50%</div></div>
+        <div class="kpi-card orange"><div class="kpi-num" id="gapWarning">0</div><div class="kpi-label">Perlu Perhatian</div><div class="kpi-sub">BL Score 50–79%</div></div>
+        <div class="kpi-card green"><div class="kpi-num" id="gapOk">0</div><div class="kpi-label">Mencapai BL</div><div class="kpi-sub">BL Score ≥80%</div></div>
+        <div class="kpi-card blue"><div class="kpi-num" id="gapTotal">0</div><div class="kpi-label">Jumlah Dianalisis</div></div>
+      </div>
+
+      <div class="filter-bar">
+        <select id="fg-prog" onchange="applyGapFilters()">
+          <option value="">Semua Program</option>
+          <option value="DUP">DUP</option><option value="DEV">DEV</option>
+          <option value="DHM">DHM</option><option value="DCY">DCY</option>
+          <option value="KOK">KOK</option><option value="BHT">BHT</option>
+        </select>
+        <select id="fg-level" onchange="applyGapFilters()">
+          <option value="">Semua Tahap</option>
+          <option value="critical">Kritikal sahaja</option>
+          <option value="warning">Perlu Perhatian sahaja</option>
+        </select>
+        <button class="btn-clear" onclick="clearGapFilters()">↺ Padam</button>
+      </div>
+
+      <div id="gapList"></div>
+    </div><!-- end page-gap -->
+
+    <!-- ═══════════════════════════════════════
+         PAGE 5: SIMULATOR
+    ═══════════════════════════════════════ -->
+    <div class="page" id="page-sim">
+      <div class="section-title">Simulasi Ramalan Kemajuan BL</div>
+      <div class="section-sub">Kira unjuran berdasarkan senario pilihan anda</div>
+
+      <div class="sim-warning">⚠️ SIMULASI SENARIO SAHAJA — Ini bukan ramalan AI, bukan unjuran rasmi dan bukan pencapaian sebenar. Nilai ini untuk perancangan dalaman sahaja.</div>
+
+      <div class="card">
+        <div class="sim-form">
+          <div class="form-group">
+            <label class="form-label">Kursus Memenuhi BL Sekarang</label>
+            <input class="form-input" id="simCurrent" type="number" value="22" min="0" oninput="calcSim()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Jumlah Kursus JPH</label>
+            <input class="form-input" id="simTotal" type="number" value="36" min="1" oninput="calcSim()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Kursus Tambahan Dijangka Selesai</label>
+            <div class="form-sub">Masukkan anggaran kursus yang akan mencapai BL status</div>
+            <input class="form-input" id="simAdd" type="number" value="0" min="0" oninput="calcSim()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">% Semasa</label>
+            <input class="form-input" id="simCurrentPct" readonly style="background:#EEF2F5;font-weight:700;color:var(--teal);">
+          </div>
+        </div>
+
+        <div class="sim-result" id="simResult">
+          <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--blue);margin-bottom:8px;">📊 UNJURAN SIMULASI</div>
+          <div style="display:flex;align-items:baseline;gap:4px;">
+            <span class="sim-pct-big" id="simResultPct">61.1%</span>
+            <span class="sim-change" id="simResultChange">+0.0%</span>
+          </div>
+          <div class="sim-bar-track"><div class="sim-bar-fill" id="simResultBar" style="width:61.1%"></div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;font-size:12px;">
+            <div style="padding:8px 10px;background:rgba(255,255,255,.7);border-radius:8px;">
+              <div style="color:var(--muted);">Untuk capai <strong>80%</strong></div>
+              <div style="font-weight:700;color:var(--navy);" id="simTo80">—</div>
+            </div>
+            <div style="padding:8px 10px;background:rgba(255,255,255,.7);border-radius:8px;">
+              <div style="color:var(--muted);">Untuk capai <strong>100%</strong></div>
+              <div style="font-weight:700;color:var(--navy);" id="simTo100">—</div>
+            </div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:10px;font-style:italic;">Unjuran ini adalah berdasarkan input manual. Ia tidak mewakili data sebenar CIDOS.</div>
+        </div>
+      </div>
+    </div><!-- end page-sim -->
+
+    <!-- ═══════════════════════════════════════
+         PAGE 6: REPORT
+    ═══════════════════════════════════════ -->
+    <div class="page" id="page-report">
+      <div class="section-title">Laporan Pemantauan Blended Learning</div>
+      <div class="section-sub">Ringkasan status per program · Boleh dicetak</div>
+
+      <div class="no-print" style="display:flex;gap:8px;margin-bottom:16px;">
+        <button class="btn btn-navy" onclick="window.print()">🖨️ Cetak / Simpan PDF</button>
+      </div>
+
+      <!-- Report Header (print-friendly) -->
+      <div class="card" style="border-top:4px solid var(--navy);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+          <div>
+            <div style="font-size:18px;font-weight:800;color:var(--navy);">Laporan Pemantauan Blended Learning</div>
+            <div style="font-size:13px;color:var(--muted);margin-top:4px;">CIDOS SmartTrack — JPH Edition</div>
+          </div>
+          <div style="text-align:right;font-size:12px;color:var(--muted);">
+            <div><strong style="color:var(--navy);">Jabatan:</strong> Pelancongan dan Hospitaliti (JPH)</div>
+            <div><strong style="color:var(--navy);">Institusi:</strong> Politeknik Ibrahim Sultan</div>
+            <div><strong style="color:var(--navy);">Semester:</strong> Sesi 1, 2026/2027</div>
+            <div><strong style="color:var(--navy);">Tarikh Data:</strong> 10 Ogos 2026</div>
+            <div><strong style="color:var(--navy);">Dijana:</strong> <span id="reportDate"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI Summary -->
+      <div class="report-summary" id="reportKPI"></div>
+
+      <!-- Program Table -->
+      <div class="card">
+        <div class="card-title">📋 Status Per Program</div>
+        <table style="width:100%;">
+          <thead><tr>
+            <th>Program</th><th>Nama Program</th>
+            <th>Memenuhi</th><th>Belum Memenuhi</th><th>Jumlah</th>
+            <th>Peratusan</th><th>Status</th>
+          </tr></thead>
+          <tbody id="reportProgramTable"></tbody>
+        </table>
+      </div>
+
+      <!-- Gap Summary -->
+      <div class="card">
+        <div class="card-title">⚠️ Senarai Kursus Belum Memenuhi BL</div>
+        <table style="width:100%;">
+          <thead><tr>
+            <th>Kod</th><th>Nama Kursus</th><th>Program</th>
+            <th>Pensyarah</th><th>Skor BL</th><th>Status</th>
+          </tr></thead>
+          <tbody id="reportGapTable"></tbody>
+        </table>
+      </div>
+
+      <div class="card" style="font-size:11px;color:var(--muted);text-align:center;padding:14px;">
+        Dijana oleh CIDOS SmartTrack — JPH Edition · Politeknik Ibrahim Sultan · Data adalah untuk tujuan pemantauan dalaman sahaja
+      </div>
+    </div><!-- end page-report -->
+
+  </div><!-- end .content -->
+</div><!-- end .main -->
+
+<!-- ═══════════════════════════════════════════
+     MODAL: EDIT CIDOS CRITERIA
+═══════════════════════════════════════════ -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modalCourseTitle">Edit Kriteria CIDOS</div>
+        <div style="font-size:11px;color:var(--muted);" id="modalCourseSub"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-tabs">
+        <button class="modal-tab active" onclick="switchTab(0)">⚙️ Setup Operasi</button>
+        <button class="modal-tab" onclick="switchTab(1)">✅ Kriteria BL CIDOS</button>
+      </div>
+      <!-- Tab A: Operational Setup -->
+      <div class="modal-tab-pane active" id="tabA">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">1. Platform kursus diwujudkan?</label>
+            <select class="form-select" id="m_platform"><option value="1">Ya ✅</option><option value="0">Tidak ❌</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">2. Pendaftaran pelajar selesai?</label>
+            <select class="form-select" id="m_enrol"><option value="1">Ya ✅</option><option value="0">Tidak ❌</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">3. Pelajar dijangka (bil.)</label>
+            <input class="form-input" id="m_exp_students" type="number" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">4. Pelajar sebenar didaftar</label>
+            <input class="form-input" id="m_act_students" type="number" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">5. Kumpulan kelas diwujudkan?</label>
+            <select class="form-select" id="m_groups"><option value="1">Ya ✅</option><option value="0">Tidak ❌</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">6. Kumpulan dijangka (bil.)</label>
+            <input class="form-input" id="m_exp_groups" type="number" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">7. Kumpulan sebenar diwujudkan</label>
+            <input class="form-input" id="m_act_groups" type="number" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">8. Pelajar dalam kumpulan betul?</label>
+            <select class="form-select" id="m_groupmem"><option value="1">Ya ✅</option><option value="0">Tidak ❌</option></select>
+          </div>
+        </div>
+      </div>
+      <!-- Tab B: BL Compliance -->
+      <div class="modal-tab-pane" id="tabB">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">1. Course Setup (Platform)</label>
+            <select class="form-select" id="m_c1"><option value="1">Ya ✅</option><option value="0">Tidak ❌</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">2. Student Enrolment</label>
+            <select class="form-select" id="m_c2"><option value="1">Ya ✅</option><option value="0">Tidak ❌</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">3. Create Group</label>
+            <select class="form-select" id="m_c3"><option value="1">Ya ✅</option><option value="0">Tidak ❌</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">4. Group Membership</label>
+            <select class="form-select" id="m_c4"><option value="1">Ya ✅</option><option value="0">Tidak ❌</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">5. Pengenalan Kursus (bil.) <span style="color:var(--teal);">min ≥1</span></label>
+            <input class="form-input" id="m_c5" type="number" min="0" oninput="updateLiveScore()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">6. e-Content (bil.) <span style="color:var(--teal);">min ≥7</span></label>
+            <input class="form-input" id="m_c6" type="number" min="0" oninput="updateLiveScore()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">7. Forum/Perbincangan (bil.) <span style="color:var(--teal);">min ≥5</span></label>
+            <input class="form-input" id="m_c7" type="number" min="0" oninput="updateLiveScore()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">8. Pentaksiran Dalam Talian (bil.) <span style="color:var(--teal);">min ≥2</span></label>
+            <input class="form-input" id="m_c8" type="number" min="0" oninput="updateLiveScore()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">9. Interaksi Pelajar (%) <span style="color:var(--teal);">min ≥70%</span></label>
+            <input class="form-input" id="m_c9" type="number" min="0" max="100" oninput="updateLiveScore()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">10. BLDT Online Selesai?</label>
+            <select class="form-select" id="m_c10" onchange="updateLiveScore()"><option value="1">Ya ✅</option><option value="0">Tidak ❌</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">11. Group Blended Status?</label>
+            <select class="form-select" id="m_c11" onchange="updateLiveScore()"><option value="1">Ya ✅</option><option value="0">Tidak ❌</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">12. Platform Blended Status?</label>
+            <select class="form-select" id="m_c12" onchange="updateLiveScore()"><option value="1">Ya (Auto) ✅</option><option value="0">Tidak ❌</option></select>
+          </div>
+        </div>
+        <div class="score-box" id="liveScoreBox">
+          <div class="score-big" id="liveScore">—</div>
+          <div class="score-lbl">Skor BL Semasa (berdasarkan 12 komponen)</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-grey" onclick="closeModal()">Batal</button>
+      <button class="btn btn-teal" onclick="saveModal()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     MODAL: REMINDER
+═══════════════════════════════════════════ -->
+<div class="modal-overlay" id="reminderModal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">📱 Peringatan Pensyarah</div>
+        <div style="font-size:11px;color:var(--muted);" id="reminderSub">Semak dan edit mesej sebelum menghantar</div>
+      </div>
+      <button class="modal-close" onclick="closeReminder()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:#FEF3E7;border-radius:8px;padding:10px 12px;font-size:11px;color:#7A4A00;margin-bottom:12px;">⚠️ Mesej ini perlu disalin secara manual ke WhatsApp. Tiada penghantaran automatik.</div>
+      <label class="form-label">Mesej Peringatan (boleh diedit)</label>
+      <textarea class="reminder-area" id="reminderText" rows="8"></textarea>
+      <div class="copy-notice" id="copyNotice">✅ Mesej berjaya disalin!</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-grey" onclick="closeReminder()">Tutup</button>
+      <button class="btn btn-green" onclick="copyReminder()">📋 Salin Mesej</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   DATA — 36 KURSUS SEBENAR JPH · Sesi 1 2026/2027
+   Pensyarah adalah FIKSYEN sepenuhnya
+═══════════════════════════════════════════════════════════════ */
+const THRESHOLDS = { c5:1, c6:7, c7:5, c8:2, c9:70 };
+
+const courses = [
+  // DUP — Diploma Pengurusan Pelancongan (5/5 Memenuhi)
+  {id:'DUP-01',code:'DUP2411',name:'Terrestrial Recreational Tourism',prog:'DUP',lecturer:'En. Hafizuddin bin Nasri',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:32,act_s:32,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:2,c6:9,c7:6,c8:3,c9:82,c10:1,c11:1,c12:1},
+  {id:'DUP-02',code:'DUP2422',name:'Visitor Interpretation Services',prog:'DUP',lecturer:'Pn. Norziana binti Hamid',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:30,act_s:30,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:1,c6:8,c7:5,c8:2,c9:75,c10:1,c11:1,c12:1},
+  {id:'DUP-03',code:'DUP2433',name:'Tourism Geography',prog:'DUP',lecturer:'En. Hafizuddin bin Nasri',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:35,act_s:34,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:1,c6:7,c7:5,c8:2,c9:71,c10:1,c11:1,c12:1},
+  {id:'DUP-04',code:'DUP2444',name:'Travel and Tour Management',prog:'DUP',lecturer:'Pn. Norziana binti Hamid',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:32,act_s:31,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:2,c6:10,c7:7,c8:3,c9:85,c10:1,c11:1,c12:1},
+  {id:'DUP-05',code:'DUP2455',name:'Occupational Safety and Health',prog:'DUP',lecturer:'En. Ridhwan bin Azman',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:30,act_s:30,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:1,c6:8,c7:5,c8:2,c9:78,c10:1,c11:1,c12:1},
+
+  // DEV — Diploma Pengurusan Acara (6/6 Memenuhi)
+  {id:'DEV-01',code:'DEV2411',name:'Introduction to Tourism and Hospitality',prog:'DEV',lecturer:'Pn. Suraya binti Othman',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:28,act_s:28,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:1,c6:7,c7:5,c8:2,c9:73,c10:1,c11:1,c12:1},
+  {id:'DEV-02',code:'DEV2422',name:'Event Logistics',prog:'DEV',lecturer:'En. Fadzillah bin Mohd Sani',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:28,act_s:27,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:2,c6:9,c7:6,c8:3,c9:80,c10:1,c11:1,c12:1},
+  {id:'DEV-03',code:'DEV2433',name:'Principles of Event Management',prog:'DEV',lecturer:'Pn. Suraya binti Othman',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:30,act_s:30,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:1,c6:8,c7:5,c8:2,c9:76,c10:1,c11:1,c12:1},
+  {id:'DEV-04',code:'DEV2444',name:'Event Publication',prog:'DEV',lecturer:'En. Fadzillah bin Mohd Sani',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:28,act_s:28,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:1,c6:7,c7:5,c8:2,c9:72,c10:1,c11:1,c12:1},
+  {id:'DEV-05',code:'DEV2455',name:'Integrated Marketing Communication for Events',prog:'DEV',lecturer:'Pn. Haslina binti Razali',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:29,act_s:29,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:2,c6:9,c7:6,c8:3,c9:84,c10:1,c11:1,c12:1},
+  {id:'DEV-06',code:'DEV2466',name:'Human Resource Management',prog:'DEV',lecturer:'Pn. Haslina binti Razali',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:28,act_s:27,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:1,c6:8,c7:5,c8:2,c9:77,c10:1,c11:1,c12:1},
+
+  // DHM — Diploma Pengurusan Hotel (4/7 Memenuhi)
+  {id:'DHM-01',code:'DHM2411',name:'Green Technology Compliance',prog:'DHM',lecturer:'En. Shahrul bin Kamaruddin',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:33,act_s:33,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:1,c6:7,c7:5,c8:2,c9:74,c10:1,c11:1,c12:1},
+  {id:'DHM-02',code:'DHM2422',name:'Fundamentals of Hospitality Industry',prog:'DHM',lecturer:'Pn. Roziah binti Ismail',sem:'Sem 1 2026/2027',blStatus:'Belum Memenuhi',platform:1,enrol:1,exp_s:35,act_s:33,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:1,c6:4,c7:2,c8:1,c9:55,c10:0,c11:0,c12:0},
+  {id:'DHM-03',code:'DHM2433',name:'Digital Entrepreneurship for Tourism and Hospitality',prog:'DHM',lecturer:'En. Shahrul bin Kamaruddin',sem:'Sem 1 2026/2027',blStatus:'Belum Memenuhi',platform:1,enrol:1,exp_s:30,act_s:28,groups:1,exp_g:2,act_g:2,groupmem:0,c1:1,c2:1,c3:1,c4:0,c5:1,c6:5,c7:3,c8:1,c9:60,c10:0,c11:0,c12:0},
+  {id:'DHM-04',code:'DHM2444',name:'Food and Beverages Services',prog:'DHM',lecturer:'Pn. Roziah binti Ismail',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:32,act_s:32,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:1,c6:8,c7:5,c8:2,c9:75,c10:1,c11:1,c12:1},
+  {id:'DHM-05',code:'DHM2455',name:'Hospitality Law',prog:'DHM',lecturer:'En. Izwan bin Zulkifli',sem:'Sem 1 2026/2027',blStatus:'Belum Memenuhi',platform:1,enrol:0,exp_s:28,act_s:20,groups:0,exp_g:2,act_g:0,groupmem:0,c1:1,c2:0,c3:0,c4:0,c5:0,c6:3,c7:1,c8:0,c9:40,c10:0,c11:0,c12:0},
+  {id:'DHM-06',code:'DHM2466',name:'Front Office Operation and Management',prog:'DHM',lecturer:'En. Izwan bin Zulkifli',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:34,act_s:34,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:2,c6:9,c7:6,c8:3,c9:81,c10:1,c11:1,c12:1},
+  {id:'DHM-07',code:'DHM2477',name:'Food and Beverage Cost Control',prog:'DHM',lecturer:'Pn. Roziah binti Ismail',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:30,act_s:30,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:1,c6:7,c7:5,c8:2,c9:73,c10:1,c11:1,c12:1},
+
+  // DCY — Diploma Seni Kulinari (1/6 Memenuhi)
+  {id:'DCY-01',code:'DCY2411',name:'Foodservice Sanitation',prog:'DCY',lecturer:'Chef Hairul bin Rashid',sem:'Sem 1 2026/2027',blStatus:'Belum Memenuhi',platform:1,enrol:1,exp_s:25,act_s:24,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:1,c6:4,c7:2,c8:1,c9:58,c10:0,c11:0,c12:0},
+  {id:'DCY-02',code:'DCY2422',name:'Fundamentals of Culinary Arts',prog:'DCY',lecturer:'Chef Hairul bin Rashid',sem:'Sem 1 2026/2027',blStatus:'Belum Memenuhi',platform:1,enrol:1,exp_s:25,act_s:23,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:0,c6:3,c7:2,c8:1,c9:50,c10:0,c11:0,c12:0},
+  {id:'DCY-03',code:'DCY2433',name:'Advanced Baking and Pastry',prog:'DCY',lecturer:'Pn. Norhafizah binti Sulaiman',sem:'Sem 1 2026/2027',blStatus:'Belum Memenuhi',platform:1,enrol:1,exp_s:24,act_s:22,groups:1,exp_g:2,act_g:1,groupmem:0,c1:1,c2:1,c3:1,c4:0,c5:1,c6:5,c7:3,c8:1,c9:62,c10:0,c11:0,c12:0},
+  {id:'DCY-04',code:'DCY2444',name:'Malaysian Cuisine',prog:'DCY',lecturer:'Chef Hairul bin Rashid',sem:'Sem 1 2026/2027',blStatus:'Belum Memenuhi',platform:1,enrol:0,exp_s:25,act_s:10,groups:0,exp_g:2,act_g:0,groupmem:0,c1:1,c2:0,c3:0,c4:0,c5:0,c6:2,c7:1,c8:0,c9:30,c10:0,c11:0,c12:0},
+  {id:'DCY-05',code:'DCY2455',name:'Garde Manger',prog:'DCY',lecturer:'Pn. Norhafizah binti Sulaiman',sem:'Sem 1 2026/2027',blStatus:'Belum Memenuhi',platform:1,enrol:1,exp_s:24,act_s:20,groups:1,exp_g:2,act_g:2,groupmem:0,c1:1,c2:1,c3:1,c4:0,c5:0,c6:4,c7:2,c8:1,c9:45,c10:0,c11:0,c12:0},
+  {id:'DCY-06',code:'DCY2466',name:'Green Technology Compliance',prog:'DCY',lecturer:'Pn. Norhafizah binti Sulaiman',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:24,act_s:24,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:1,c6:7,c7:5,c8:2,c9:72,c10:1,c11:1,c12:1},
+
+  // KOK — Kokurikulum (6/7 Memenuhi)
+  {id:'KOK-01',code:'KOK2411',name:'Pengenalan kepada Industri Katering',prog:'KOK',lecturer:'En. Azrul bin Mansor',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:40,act_s:40,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:1,c6:8,c7:5,c8:2,c9:78,c10:1,c11:1,c12:1},
+  {id:'KOK-02',code:'KOK2422',name:'Sanitasi dan Keselamatan dalam Perkhidmatan Makanan',prog:'KOK',lecturer:'Pn. Mastura binti Yusoff',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:38,act_s:37,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:1,c6:7,c7:5,c8:2,c9:74,c10:1,c11:1,c12:1},
+  {id:'KOK-03',code:'KOK2433',name:'Pastri',prog:'KOK',lecturer:'En. Azrul bin Mansor',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:36,act_s:36,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:2,c6:9,c7:6,c8:3,c9:83,c10:1,c11:1,c12:1},
+  {id:'KOK-04',code:'KOK2444',name:'Penyajian Makanan dan Minuman',prog:'KOK',lecturer:'Pn. Mastura binti Yusoff',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:38,act_s:38,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:1,c6:8,c7:5,c8:2,c9:76,c10:1,c11:1,c12:1},
+  {id:'KOK-05',code:'KOK2455',name:'Asas Barista',prog:'KOK',lecturer:'En. Azrul bin Mansor',sem:'Sem 1 2026/2027',blStatus:'Belum Memenuhi',platform:1,enrol:1,exp_s:35,act_s:33,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:1,c6:5,c7:3,c8:1,c9:65,c10:0,c11:0,c12:0},
+  {id:'KOK-06',code:'KOK2466',name:'Kokurikulum (Sukan)',prog:'KOK',lecturer:'Pn. Mastura binti Yusoff',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:50,act_s:50,groups:1,exp_g:3,act_g:3,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:1,c6:7,c7:5,c8:2,c9:80,c10:1,c11:1,c12:1},
+  {id:'KOK-07',code:'KOK2477',name:'Bakeri',prog:'KOK',lecturer:'En. Azrul bin Mansor',sem:'Sem 1 2026/2027',blStatus:'Memenuhi',platform:1,enrol:1,exp_s:36,act_s:35,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:2,c6:8,c7:5,c8:2,c9:79,c10:1,c11:1,c12:1},
+
+  // BHT — 0/5 Belum Memenuhi (Kod kursus BTT — disahkan 10 Ogos 2026)
+  {id:'BHT-01',code:'BTT10433',name:'Introduction to Tourism and Hospitality',prog:'BHT',lecturer:'Pensyarah BHT A (fiksyen)',sem:'Sem 1 2026/2027',blStatus:'Belum Memenuhi',platform:1,enrol:1,exp_s:30,act_s:28,groups:1,exp_g:2,act_g:2,groupmem:1,c1:1,c2:1,c3:1,c4:1,c5:1,c6:4,c7:2,c8:1,c9:55,c10:0,c11:0,c12:0},
+  {id:'BHT-02',code:'BTT10653',name:'World Tourism Destinations',prog:'BHT',lecturer:'Pensyarah BHT B (fiksyen)',sem:'Sem 1 2026/2027',blStatus:'Belum Memenuhi',platform:1,enrol:0,exp_s:28,act_s:15,groups:0,exp_g:2,act_g:0,groupmem:0,c1:1,c2:0,c3:0,c4:0,c5:0,c6:3,c7:1,c8:0,c9:35,c10:0,c11:0,c12:0},
+  {id:'BHT-03',code:'BTT30503',name:'Public Relations in Tourism and Hospitality',prog:'BHT',lecturer:'Pensyarah BHT A (fiksyen)',sem:'Sem 1 2026/2027',blStatus:'Belum Memenuhi',platform:1,enrol:1,exp_s:30,act_s:27,groups:1,exp_g:2,act_g:2,groupmem:0,c1:1,c2:1,c3:1,c4:0,c5:1,c6:5,c7:2,c8:1,c9:60,c10:0,c11:0,c12:0},
+  {id:'BHT-04',code:'BTT30513',name:'Travel and Tour Operations Management',prog:'BHT',lecturer:'Pensyarah BHT B (fiksyen)',sem:'Sem 1 2026/2027',blStatus:'Belum Memenuhi',platform:1,enrol:1,exp_s:28,act_s:25,groups:1,exp_g:2,act_g:1,groupmem:0,c1:1,c2:1,c3:1,c4:0,c5:0,c6:4,c7:3,c8:1,c9:50,c10:0,c11:0,c12:0},
+  {id:'BHT-05',code:'BTT10443',name:'Professionalism and Customer Service',prog:'BHT',lecturer:'Pensyarah BHT A (fiksyen)',sem:'Sem 1 2026/2027',blStatus:'Belum Memenuhi',platform:0,enrol:0,exp_s:28,act_s:0,groups:0,exp_g:2,act_g:0,groupmem:0,c1:0,c2:0,c3:0,c4:0,c5:0,c6:2,c7:1,c8:0,c9:25,c10:0,c11:0,c12:0},
+];
+
+/* ═══════════════════════════════════════════════
+   UTILITY FUNCTIONS
+═══════════════════════════════════════════════ */
+function calcBLScore(c) {
+  const checks = [
+    c.c1===1, c.c2===1, c.c3===1, c.c4===1,
+    c.c5>=THRESHOLDS.c5, c.c6>=THRESHOLDS.c6,
+    c.c7>=THRESHOLDS.c7, c.c8>=THRESHOLDS.c8,
+    c.c9>=THRESHOLDS.c9, c.c10===1, c.c11===1, c.c12===1
+  ];
+  const passed = checks.filter(Boolean).length;
+  return Math.round((passed/12)*100);
+}
+
+function getBLStatusFromScore(score) {
+  if(score>=80) return 'Memenuhi';
+  if(score>=50) return 'Dalam Proses';
+  return 'Belum Memenuhi';
+}
+
+function statusBadge(status) {
+  if(status==='Memenuhi') return `<span class="badge badge-green"><span class="badge-dot"></span>Memenuhi</span>`;
+  if(status==='Dalam Proses') return `<span class="badge badge-orange"><span class="badge-dot"></span>Dalam Proses</span>`;
+  return `<span class="badge badge-red"><span class="badge-dot"></span>Belum Memenuhi</span>`;
+}
+
+function tick(v){ return v?'✅':'❌'; }
+
+function getMissingItems(c) {
+  const missing = [];
+  if(!c.c1) missing.push('Course Setup');
+  if(!c.c2) missing.push('Student Enrolment');
+  if(!c.c3) missing.push('Cipta Kumpulan');
+  if(!c.c4) missing.push('Penempatan Kumpulan');
+  if(c.c5<THRESHOLDS.c5) missing.push(`Pengenalan Kursus (${c.c5}/${THRESHOLDS.c5})`);
+  if(c.c6<THRESHOLDS.c6) missing.push(`e-Content (${c.c6}/${THRESHOLDS.c6})`);
+  if(c.c7<THRESHOLDS.c7) missing.push(`Forum/Perbincangan (${c.c7}/${THRESHOLDS.c7})`);
+  if(c.c8<THRESHOLDS.c8) missing.push(`Pentaksiran (${c.c8}/${THRESHOLDS.c8})`);
+  if(c.c9<THRESHOLDS.c9) missing.push(`Interaksi Pelajar (${c.c9}%/${THRESHOLDS.c9}%)`);
+  if(!c.c10) missing.push('BLDT Online');
+  if(!c.c11) missing.push('Group Blended Status');
+  if(!c.c12) missing.push('Platform Blended Status');
+  return missing;
+}
+
+const PROG_NAMES = {
+  DUP:'Diploma Pengurusan Pelancongan',
+  DEV:'Diploma Pengurusan Acara',
+  DHM:'Diploma Pengurusan Hotel',
+  DCY:'Diploma Seni Kulinari',
+  KOK:'Kokurikulum',
+  BHT:'BHT'
+};
+
+/* ═══════════════════════════════════════════════
+   NAVIGATION
+═══════════════════════════════════════════════ */
+const pageTitles = {
+  overview:'Overview Dashboard',
+  monitor:'Pemantauan Program',
+  cidos:'Pemantauan Kriteria CIDOS',
+  gap:'Gap Detection & Peringatan',
+  sim:'Simulasi Ramalan',
+  report:'Laporan Pemantauan'
+};
+
+function navigate(page, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  if(btn) btn.classList.add('active');
+  document.getElementById('topbarTitle').textContent = pageTitles[page];
+  closeSidebar();
+  if(page==='cidos') renderCidosTable(courses);
+  if(page==='gap')   renderGap(courses);
+  if(page==='report') renderReport();
+  if(page==='sim')   calcSim();
+}
+
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('open');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
+}
+
+/* ═══════════════════════════════════════════════
+   OVERVIEW
+═══════════════════════════════════════════════ */
+function renderOverview() {
+  const total = courses.length;
+  const complete = courses.filter(c=>c.blStatus==='Memenuhi').length;
+  const inprog  = courses.filter(c=>c.blStatus==='Dalam Proses').length;
+  const risk    = courses.filter(c=>c.blStatus==='Belum Memenuhi').length;
+  const pct     = ((complete/total)*100).toFixed(1);
+
+  document.getElementById('kpi-total').textContent = total;
+  document.getElementById('kpi-complete').textContent = complete;
+  document.getElementById('kpi-complete-pct').textContent = pct+'%';
+  document.getElementById('kpi-partial').textContent = inprog;
+  document.getElementById('kpi-partial-pct').textContent = ((inprog/total)*100).toFixed(1)+'%';
+  document.getElementById('kpi-risk').textContent = risk;
+  document.getElementById('kpi-risk-pct').textContent = ((risk/total)*100).toFixed(1)+'%';
+  document.getElementById('ov-pct').textContent = pct+'%';
+  document.getElementById('ov-bar').style.width = pct+'%';
+  document.getElementById('ov-counts').textContent = `${complete} daripada ${total} kursus telah mencapai Blended Status · Sesi 1, 2026/2027`;
+
+  const gapCount = courses.filter(c=>c.blStatus!=='Memenuhi').length;
+  document.getElementById('topbarAlert').textContent = `🔴 ${gapCount} Belum Memenuhi`;
+
+  // Program summary table
+  const progs = [...new Set(courses.map(c=>c.prog))];
+  const tbody = document.getElementById('overviewProgramTable');
+  tbody.innerHTML = progs.map(p=>{
+    const pc = courses.filter(c=>c.prog===p);
+    const lulus = pc.filter(c=>c.blStatus==='Memenuhi').length;
+    const jumlah = pc.length;
+    const ppct = ((lulus/jumlah)*100).toFixed(0);
+    const color = lulus===jumlah?'var(--green)':lulus/jumlah>=0.5?'var(--orange)':'var(--red)';
+    return `<tr>
+      <td style="font-weight:700;color:var(--navy);">${p}</td>
+      <td style="color:var(--muted);font-size:11px;">${PROG_NAMES[p]||p}</td>
+      <td style="font-weight:700;color:${color};">${lulus}</td>
+      <td>${jumlah}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div class="mini-prog"><div class="mini-prog-fill" style="width:${ppct}%;background:${color};"></div></div>
+          <span style="font-size:11px;font-weight:700;color:${color};">${ppct}%</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  renderCharts(progs, courses);
+}
+
+/* ═══════════════════════════════════════════════
+   CHARTS
+═══════════════════════════════════════════════ */
+let chartProg = null, chartStatus = null;
+function renderCharts(progs, data) {
+  const progLabels = progs;
+  const progData   = progs.map(p=>Math.round((data.filter(c=>c.prog===p&&c.blStatus==='Memenuhi').length / data.filter(c=>c.prog===p).length)*100));
+  const progColors = progData.map(v=>v===100?'#1DB07A':v>=50?'#E88A2E':'#D94F4F');
+
+  if(chartProg) chartProg.destroy();
+  chartProg = new Chart(document.getElementById('chartProgram'),{
+    type:'bar',
+    data:{ labels:progLabels, datasets:[{label:'% Memenuhi BL',data:progData,backgroundColor:progColors,borderRadius:6,borderSkipped:false}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{max:100,ticks:{callback:v=>v+'%'},grid:{color:'#EEF2F5'}},y:{grid:{display:false}}}}
+  });
+
+  const complete  = data.filter(c=>c.blStatus==='Memenuhi').length;
+  const inprog    = data.filter(c=>c.blStatus==='Dalam Proses').length;
+  const risk      = data.filter(c=>c.blStatus==='Belum Memenuhi').length;
+
+  if(chartStatus) chartStatus.destroy();
+  chartStatus = new Chart(document.getElementById('chartStatus'),{
+    type:'doughnut',
+    data:{labels:['Memenuhi','Dalam Proses','Belum Memenuhi'],datasets:[{data:[complete,inprog,risk],backgroundColor:['#1DB07A','#E88A2E','#D94F4F'],borderWidth:0,hoverOffset:6}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:12}}}}}
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   PROGRAMME MONITOR TABLE
+═══════════════════════════════════════════════ */
+function populateLecturerFilter() {
+  const lecs = [...new Set(courses.map(c=>c.lecturer))].sort();
+  const sel = document.getElementById('f-lec');
+  lecs.forEach(l=>{
+    const o=document.createElement('option'); o.value=l; o.textContent=l; sel.appendChild(o);
+  });
+}
+
+function renderMonitorTable(data) {
+  const tbody = document.getElementById('monitorTableBody');
+  if(!data.length){ tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted);">Tiada rekod ditemui</td></tr>`; return; }
+  const score = c => calcBLScore(c);
+  tbody.innerHTML = data.map(c=>{
+    const sc = score(c);
+    const st = getBLStatusFromScore(sc);
+    const color = sc>=80?'var(--green)':sc>=50?'var(--orange)':'var(--red)';
+    return `<tr>
+      <td style="font-weight:700;color:var(--navy);font-family:monospace;font-size:11px;">${c.code}</td>
+      <td style="max-width:220px;">${c.name}</td>
+      <td><span class="badge badge-blue">${c.prog}</span></td>
+      <td style="font-size:11px;color:var(--muted);">${c.lecturer}</td>
+      <td style="font-size:11px;color:var(--muted);">${c.sem}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div class="mini-prog" style="width:60px;"><div class="mini-prog-fill" style="width:${sc}%;background:${color};"></div></div>
+          <span style="font-size:11px;font-weight:700;color:${color};">${sc}%</span>
+        </div>
+      </td>
+      <td>${statusBadge(st)}</td>
+      <td class="no-print" style="white-space:nowrap;">
+        <button class="btn btn-teal btn-sm" onclick="openEdit('${c.id}')">✏️ Edit</button>
+        <button class="btn btn-outline btn-sm" style="margin-left:4px;" onclick="openReminder('${c.id}')">📱 Peringat</button>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('filterCount').textContent = `${data.length} rekod`;
+}
+
+function applyFilters() {
+  const prog   = document.getElementById('f-prog').value;
+  const sem    = document.getElementById('f-sem').value;
+  const lec    = document.getElementById('f-lec').value;
+  const status = document.getElementById('f-status').value;
+  const search = document.getElementById('f-search').value.toLowerCase();
+
+  const filtered = courses.filter(c=>{
+    const sc = calcBLScore(c);
+    const st = getBLStatusFromScore(sc);
+    return (!prog||c.prog===prog) &&
+           (!sem||c.sem===sem) &&
+           (!lec||c.lecturer===lec) &&
+           (!status||st===status) &&
+           (!search||(c.name.toLowerCase().includes(search)||c.code.toLowerCase().includes(search)));
+  });
+  renderMonitorTable(filtered);
+}
+
+function clearFilters() {
+  ['f-prog','f-sem','f-lec','f-status'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-search').value='';
+  renderMonitorTable(courses);
+}
+
+/* ═══════════════════════════════════════════════
+   CIDOS TABLE
+═══════════════════════════════════════════════ */
+function renderCidosTable(data) {
+  const pass = courses.filter(c=>calcBLScore(c)>=80).length;
+  const mid  = courses.filter(c=>{ const s=calcBLScore(c); return s>=50&&s<80; }).length;
+  const fail = courses.filter(c=>calcBLScore(c)<50).length;
+  document.getElementById('cidosPass').textContent = pass;
+  document.getElementById('cidosMid').textContent  = mid;
+  document.getElementById('cidosFail').textContent = fail;
+
+  const tbody = document.getElementById('cidosTableBody');
+  if(!data.length){ tbody.innerHTML=`<tr><td colspan="15" style="text-align:center;padding:20px;color:var(--muted);">Tiada rekod</td></tr>`; return; }
+
+  tbody.innerHTML = data.map(c=>{
+    const sc = calcBLScore(c);
+    const st = getBLStatusFromScore(sc);
+    const color = sc>=80?'var(--green)':sc>=50?'var(--orange)':'var(--red)';
+    const cellStyle = (pass,val,min)=>pass?'color:var(--green);font-weight:700;':`color:var(--red);font-weight:700;`;
+    return `<tr>
+      <td style="font-family:monospace;font-size:11px;font-weight:700;color:var(--navy);">${c.code}</td>
+      <td style="font-size:11px;max-width:180px;">${c.name}</td>
+      <td><span class="badge badge-blue">${c.prog}</span></td>
+      <td style="font-size:11px;color:var(--muted);">${c.lecturer}</td>
+      <td style="text-align:center;">${tick(c.c1)}</td>
+      <td style="text-align:center;">${tick(c.c2)}</td>
+      <td style="text-align:center;">${tick(c.c3&&c.c4)}</td>
+      <td style="text-align:center;${c.c6>=THRESHOLDS.c6?'color:var(--green);':'color:var(--red);'}font-weight:700;">${c.c6}/${THRESHOLDS.c6}</td>
+      <td style="text-align:center;${c.c7>=THRESHOLDS.c7?'color:var(--green);':'color:var(--red);'}font-weight:700;">${c.c7}/${THRESHOLDS.c7}</td>
+      <td style="text-align:center;${c.c8>=THRESHOLDS.c8?'color:var(--green);':'color:var(--red);'}font-weight:700;">${c.c8}/${THRESHOLDS.c8}</td>
+      <td style="text-align:center;${c.c9>=THRESHOLDS.c9?'color:var(--green);':'color:var(--red);'}font-weight:700;">${c.c9}%</td>
+      <td style="text-align:center;">${tick(c.c10)}</td>
+      <td style="text-align:center;">
+        <div style="display:flex;align-items:center;gap:4px;justify-content:center;">
+          <div class="mini-prog" style="width:44px;"><div class="mini-prog-fill" style="width:${sc}%;background:${color};"></div></div>
+          <span style="font-size:11px;font-weight:700;color:${color};">${sc}%</span>
+        </div>
+      </td>
+      <td>${statusBadge(st)}</td>
+      <td class="no-print"><button class="btn btn-teal btn-sm" onclick="openEdit('${c.id}')">✏️ Edit</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('cidosFilterCount').textContent = `${data.length} rekod`;
+}
+
+function applyCidosFilters() {
+  const prog   = document.getElementById('fc-prog').value;
+  const status = document.getElementById('fc-status').value;
+  const filtered = courses.filter(c=>{
+    const st = getBLStatusFromScore(calcBLScore(c));
+    return (!prog||c.prog===prog) && (!status||st===status);
+  });
+  renderCidosTable(filtered);
+}
+
+function clearCidosFilters() {
+  document.getElementById('fc-prog').value='';
+  document.getElementById('fc-status').value='';
+  renderCidosTable(courses);
+}
+
+/* ═══════════════════════════════════════════════
+   GAP DETECTION
+═══════════════════════════════════════════════ */
+function renderGap(data) {
+  const critical = data.filter(c=>calcBLScore(c)<50);
+  const warning  = data.filter(c=>{ const s=calcBLScore(c); return s>=50&&s<80; });
+  const ok       = data.filter(c=>calcBLScore(c)>=80);
+
+  document.getElementById('gapCritical').textContent = critical.length;
+  document.getElementById('gapWarning').textContent  = warning.length;
+  document.getElementById('gapOk').textContent       = ok.length;
+  document.getElementById('gapTotal').textContent    = data.length;
+
+  const list = document.getElementById('gapList');
+  const prog  = document.getElementById('fg-prog').value;
+  const level = document.getElementById('fg-level').value;
+
+  let toShow = [...critical, ...warning];
+  if(level==='critical') toShow = critical;
+  if(level==='warning')  toShow = warning;
+  if(prog) toShow = toShow.filter(c=>c.prog===prog);
+
+  if(!toShow.length){
+    list.innerHTML=`<div class="card" style="text-align:center;color:var(--green);font-weight:700;">✅ Tiada gap ditemui untuk penapisan ini</div>`;
+    return;
+  }
+
+  list.innerHTML = toShow.map(c=>{
+    const sc = calcBLScore(c);
+    const isCrit = sc<50;
+    const missing = getMissingItems(c);
+    const tagClass = isCrit?'critical':'warning';
+    const levelLabel = isCrit?'🔴 Kritikal':'🟠 Perlu Perhatian';
+    return `<div class="gap-card ${tagClass}">
+      <div class="gap-header">
+        <div>
+          <div class="gap-course">${c.code} — ${c.name}</div>
+          <div class="gap-meta">Program: ${c.prog} &nbsp;·&nbsp; Pensyarah: ${c.lecturer} &nbsp;·&nbsp; Skor BL: <strong style="color:${isCrit?'var(--red)':'var(--orange)'};">${sc}%</strong></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="badge ${isCrit?'badge-red':'badge-orange'}">${levelLabel}</span>
+          <button class="btn btn-outline btn-sm no-print" onclick="openReminder('${c.id}')">📱 Jana Peringatan</button>
+        </div>
+      </div>
+      <div><strong style="font-size:11px;color:var(--navy);">Item Tidak Lengkap (${missing.length}):</strong></div>
+      <div class="gap-items">
+        ${missing.map(m=>`<span class="gap-tag ${isCrit?'miss':'warn'}">${m}</span>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function applyGapFilters() { renderGap(courses); }
+function clearGapFilters() {
+  document.getElementById('fg-prog').value='';
+  document.getElementById('fg-level').value='';
+  renderGap(courses);
+}
+
+/* ═══════════════════════════════════════════════
+   EDIT MODAL
+═══════════════════════════════════════════════ */
+let editingId = null;
+
+function openEdit(id) {
+  editingId = id;
+  const c = courses.find(x=>x.id===id);
+  if(!c) return;
+  document.getElementById('modalCourseTitle').textContent = `${c.code} — ${c.name}`;
+  document.getElementById('modalCourseSub').textContent   = `Program: ${c.prog} · Pensyarah: ${c.lecturer}`;
+  // Tab A
+  document.getElementById('m_platform').value   = c.platform;
+  document.getElementById('m_enrol').value      = c.enrol;
+  document.getElementById('m_exp_students').value = c.exp_s;
+  document.getElementById('m_act_students').value = c.act_s;
+  document.getElementById('m_groups').value     = c.groups;
+  document.getElementById('m_exp_groups').value = c.exp_g;
+  document.getElementById('m_act_groups').value = c.act_g;
+  document.getElementById('m_groupmem').value   = c.groupmem;
+  // Tab B
+  document.getElementById('m_c1').value  = c.c1;
+  document.getElementById('m_c2').value  = c.c2;
+  document.getElementById('m_c3').value  = c.c3;
+  document.getElementById('m_c4').value  = c.c4;
+  document.getElementById('m_c5').value  = c.c5;
+  document.getElementById('m_c6').value  = c.c6;
+  document.getElementById('m_c7').value  = c.c7;
+  document.getElementById('m_c8').value  = c.c8;
+  document.getElementById('m_c9').value  = c.c9;
+  document.getElementById('m_c10').value = c.c10;
+  document.getElementById('m_c11').value = c.c11;
+  document.getElementById('m_c12').value = c.c12;
+  switchTab(0);
+  updateLiveScore();
+  document.getElementById('editModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('editModal').classList.remove('open');
+  editingId = null;
+}
+
+function switchTab(n) {
+  document.querySelectorAll('.modal-tab').forEach((t,i)=>t.classList.toggle('active',i===n));
+  document.querySelectorAll('.modal-tab-pane').forEach((p,i)=>p.classList.toggle('active',i===n));
+}
+
+function updateLiveScore() {
+  const temp = {
+    c1:+document.getElementById('m_c1').value,
+    c2:+document.getElementById('m_c2').value,
+    c3:+document.getElementById('m_c3').value,
+    c4:+document.getElementById('m_c4').value,
+    c5:+document.getElementById('m_c5').value,
+    c6:+document.getElementById('m_c6').value,
+    c7:+document.getElementById('m_c7').value,
+    c8:+document.getElementById('m_c8').value,
+    c9:+document.getElementById('m_c9').value,
+    c10:+document.getElementById('m_c10').value,
+    c11:+document.getElementById('m_c11').value,
+    c12:+document.getElementById('m_c12').value,
+  };
+  const sc = calcBLScore(temp);
+  const st = getBLStatusFromScore(sc);
+  const color = sc>=80?'var(--green)':sc>=50?'var(--orange)':'var(--red)';
+  document.getElementById('liveScore').textContent = sc+'%';
+  document.getElementById('liveScore').style.color = color;
+  document.getElementById('liveScoreBox').querySelector('.score-lbl').textContent = `${st} (${sc}% daripada 12 komponen)`;
+}
+
+function saveModal() {
+  if(!editingId) return;
+  const c = courses.find(x=>x.id===editingId);
+  if(!c) return;
+  c.platform=+document.getElementById('m_platform').value;
+  c.enrol=+document.getElementById('m_enrol').value;
+  c.exp_s=+document.getElementById('m_exp_students').value;
+  c.act_s=+document.getElementById('m_act_students').value;
+  c.groups=+document.getElementById('m_groups').value;
+  c.exp_g=+document.getElementById('m_exp_groups').value;
+  c.act_g=+document.getElementById('m_act_groups').value;
+  c.groupmem=+document.getElementById('m_groupmem').value;
+  c.c1=+document.getElementById('m_c1').value;
+  c.c2=+document.getElementById('m_c2').value;
+  c.c3=+document.getElementById('m_c3').value;
+  c.c4=+document.getElementById('m_c4').value;
+  c.c5=+document.getElementById('m_c5').value;
+  c.c6=+document.getElementById('m_c6').value;
+  c.c7=+document.getElementById('m_c7').value;
+  c.c8=+document.getElementById('m_c8').value;
+  c.c9=+document.getElementById('m_c9').value;
+  c.c10=+document.getElementById('m_c10').value;
+  c.c11=+document.getElementById('m_c11').value;
+  c.c12=+document.getElementById('m_c12').value;
+  const sc = calcBLScore(c);
+  c.blStatus = getBLStatusFromScore(sc);
+  closeModal();
+  // Refresh current page
+  const activePage = document.querySelector('.page.active').id;
+  if(activePage==='page-monitor') applyFilters();
+  if(activePage==='page-cidos')   applyCidosFilters();
+  if(activePage==='page-gap')     renderGap(courses);
+  renderOverview();
+}
+
+/* ═══════════════════════════════════════════════
+   REMINDER MODAL
+═══════════════════════════════════════════════ */
+function openReminder(id) {
+  const c = courses.find(x=>x.id===id);
+  if(!c) return;
+  const missing = getMissingItems(c);
+  const missingText = missing.length
+    ? missing.map((m,i)=>`   ${i+1}. ${m}`).join('\n')
+    : '   (Tiada item tidak lengkap)';
+  const msg = `Salam sejahtera,
+
+Semakan CIDOS bagi kursus ${c.code} — ${c.name} mendapati beberapa perkara masih memerlukan tindakan:
+
+${missingText}
+
+Mohon pensyarah membuat semakan dan pengemaskinian dalam sistem CIDOS. Kerjasama tuan/puan amat dihargai.
+
+Sekian, terima kasih.
+
+Jabatan Pelancongan dan Hospitaliti (JPH)
+Unit e-Learning, Politeknik Ibrahim Sultan
+Tarikh: ${new Date().toLocaleDateString('ms-MY')}`;
+
+  document.getElementById('reminderSub').textContent = `${c.code} — ${c.lecturer}`;
+  document.getElementById('reminderText').value = msg;
+  document.getElementById('copyNotice').style.display='none';
+  document.getElementById('reminderModal').classList.add('open');
+}
+
+function closeReminder() {
+  document.getElementById('reminderModal').classList.remove('open');
+}
+
+function copyReminder() {
+  const ta = document.getElementById('reminderText');
+  ta.select();
+  document.execCommand('copy');
+  const notice = document.getElementById('copyNotice');
+  notice.style.display='block';
+  setTimeout(()=>notice.style.display='none', 3000);
+}
+
+/* ═══════════════════════════════════════════════
+   SIMULATOR
+═══════════════════════════════════════════════ */
+function calcSim() {
+  const current = parseInt(document.getElementById('simCurrent').value)||0;
+  const total   = parseInt(document.getElementById('simTotal').value)||1;
+  const add     = parseInt(document.getElementById('simAdd').value)||0;
+
+  const currentPct = ((current/total)*100).toFixed(1);
+  document.getElementById('simCurrentPct').value = currentPct+'%';
+
+  const projected = Math.min(current+add, total);
+  const projPct   = ((projected/total)*100).toFixed(1);
+  const change    = (projPct-currentPct).toFixed(1);
+
+  document.getElementById('simResultPct').textContent = projPct+'%';
+  document.getElementById('simResultChange').textContent = (change>=0?'▲ +':'▼ ')+change+'%';
+  document.getElementById('simResultChange').style.color = change>=0?'var(--teal)':'var(--red)';
+  document.getElementById('simResultBar').style.width = projPct+'%';
+
+  const to80   = Math.max(0, Math.ceil(total*0.8)-projected);
+  const to100  = Math.max(0, total-projected);
+  document.getElementById('simTo80').textContent  = to80===0?'✅ Sudah capai!': `${to80} kursus lagi`;
+  document.getElementById('simTo100').textContent = to100===0?'✅ Sudah capai!': `${to100} kursus lagi`;
+}
+
+/* ═══════════════════════════════════════════════
+   REPORT
+═══════════════════════════════════════════════ */
+function renderReport() {
+  document.getElementById('reportDate').textContent = new Date().toLocaleDateString('ms-MY',{day:'numeric',month:'long',year:'numeric'});
+
+  const total    = courses.length;
+  const complete = courses.filter(c=>c.blStatus==='Memenuhi').length;
+  const pct      = ((complete/total)*100).toFixed(1);
+  const gaps     = total - complete;
+
+  const kpiDiv = document.getElementById('reportKPI');
+  kpiDiv.innerHTML = [
+    {num:total,  lbl:'Jumlah Kursus',    pct:100,  color:'var(--blue)'},
+    {num:complete,lbl:'Memenuhi BL',     pct:pct,  color:'var(--green)'},
+    {num:gaps,   lbl:'Belum Memenuhi',   pct:((gaps/total)*100).toFixed(1), color:'var(--red)'},
+    {num:pct+'%',lbl:'Peratusan Keseluruhan',pct:pct,color:'var(--teal)'}
+  ].map(k=>`
+    <div class="report-card">
+      <div class="report-num" style="color:${k.color};">${k.num}</div>
+      <div class="report-lbl">${k.lbl}</div>
+      <div class="report-prog-bar"><div class="report-prog-fill" style="width:${k.pct}%;background:${k.color};"></div></div>
+    </div>`).join('');
+
+  const progs = [...new Set(courses.map(c=>c.prog))];
+  const ptbody = document.getElementById('reportProgramTable');
+  ptbody.innerHTML = progs.map(p=>{
+    const pc     = courses.filter(c=>c.prog===p);
+    const lulus  = pc.filter(c=>c.blStatus==='Memenuhi').length;
+    const belum  = pc.length - lulus;
+    const ppct   = ((lulus/pc.length)*100).toFixed(1);
+    const color  = lulus===pc.length?'var(--green)':lulus/pc.length>=0.5?'var(--orange)':'var(--red)';
+    return `<tr>
+      <td style="font-weight:700;color:var(--navy);">${p}</td>
+      <td style="font-size:12px;">${PROG_NAMES[p]||p}</td>
+      <td style="font-weight:700;color:var(--green);">${lulus}</td>
+      <td style="font-weight:700;color:var(--red);">${belum}</td>
+      <td>${pc.length}</td>
+      <td><span style="font-weight:700;color:${color};">${ppct}%</span></td>
+      <td>${statusBadge(lulus===pc.length?'Memenuhi':lulus/pc.length>=0.5?'Dalam Proses':'Belum Memenuhi')}</td>
+    </tr>`;
+  }).join('');
+
+  const gapCourses = courses.filter(c=>c.blStatus!=='Memenuhi');
+  const gtbody = document.getElementById('reportGapTable');
+  gtbody.innerHTML = gapCourses.map(c=>{
+    const sc = calcBLScore(c);
+    return `<tr>
+      <td style="font-family:monospace;font-size:11px;font-weight:700;">${c.code}</td>
+      <td style="font-size:12px;">${c.name}</td>
+      <td><span class="badge badge-blue">${c.prog}</span></td>
+      <td style="font-size:11px;">${c.lecturer}</td>
+      <td style="font-weight:700;color:${sc<50?'var(--red)':'var(--orange)'};">${sc}%</td>
+      <td>${statusBadge(getBLStatusFromScore(sc))}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded', ()=>{
+  populateLecturerFilter();
+  renderOverview();
+  renderMonitorTable(courses);
+  calcSim();
+});
+</script>
+</body>
+</html>
